@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime, timedelta
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model  # type: ignore
 from sklearn.preprocessing import MinMaxScaler
 
 st.set_page_config(page_title="Prédiction future", layout="centered")
@@ -15,12 +15,11 @@ if "df_preds" not in st.session_state:
     st.session_state.df_preds = None
     st.session_state.pred_year = None
 
-# === Configuration utilisateur au centre ===
+# === Configuration utilisateur ===
 st.subheader("Configuration de la prédiction")
 col1, col2 = st.columns(2)
 
 with col1:
-    mode = st.radio("Mode de prédiction", ["Utiliser des données météo", "Simuler sans données"])
     annee = st.number_input("Année à prédire", min_value=2024, max_value=2100, value=2025)
 
 with col2:
@@ -31,7 +30,7 @@ if st.button("Lancer la prédiction"):
     st.write(f"### 🔧 Modèle utilisé : `{selected_model}`")
     st.write(f"### 🕒 Année à prédire : `{annee}`")
 
-    with st.spinner("Chargement du modèle et des scalers..."):
+    with st.spinner("Chargement du modèle et des données..."):
         try:
             model = load_model(f"models/{selected_model}", compile=False)
             st.write("✅ Modèle chargé avec succès")
@@ -39,66 +38,63 @@ if st.button("Lancer la prédiction"):
             st.error(f"Erreur lors du chargement du modèle : {e}")
             st.stop()
 
-        train_df = pd.read_csv("data/train_with_score.csv")
-        test_file = f"data/test_{annee - 1}_with_score.csv"
-
-        if not os.path.exists(test_file):
-            st.error(f"Le fichier {test_file} est introuvable. Veuillez le générer.")
+        # Chargement des données historiques + test
+        try:
+            train_df = pd.read_csv("data/train_with_score.csv")
+            test_file = f"data/test_{annee - 1}_with_score.csv"
+            test_df = pd.read_csv(test_file)
+            st.write("✅ Données chargées")
+        except Exception as e:
+            st.error(f"Erreur lors du chargement des données : {e}")
             st.stop()
 
-        test_df = pd.read_csv(test_file)
-        st.write("✅ Données d'entraînement et test chargées")
-
-        scaler_x = MinMaxScaler().fit(train_df[[
+        # Préparation des scalers
+        features = [
             'precip_mm', 'rain_mm', 'snow_mm', 't2m_max', 't2m_min', 't2m_mean',
             'app_tmax', 'app_tmin', 'sun_h', 'wind10_max', 'gust10_max', 'winddir',
-            'sw_rad', 'et0', 'soil_m0_7', 'soil_t0_7']])
-        scaler_y = MinMaxScaler().fit(train_df[['soil_m0_7', 'soil_t0_7', 'agri_score']])
-        st.write("✅ Normalisation des données effectuée")
+            'sw_rad', 'et0', 'soil_m0_7', 'soil_t0_7']
+        targets = ['soil_m0_7', 'soil_t0_7', 'agri_score']
 
-    st.write(f"### 🔄 Génération des données météo simulées pour {annee}")
-    last_vals = test_df.iloc[-1]
-    dates = [datetime(annee, 1, 1) + timedelta(days=i) for i in range(365)]
+        scaler_x = MinMaxScaler().fit(train_df[features])
+        scaler_y = MinMaxScaler().fit(train_df[targets])
+        st.write("✅ Normalisation effectuée")
 
-    df_future = pd.DataFrame({"date": dates})
-    for col in [
-        'precip_mm', 'rain_mm', 'snow_mm', 't2m_max', 't2m_min', 't2m_mean',
-        'app_tmax', 'app_tmin', 'sun_h', 'wind10_max', 'gust10_max', 'winddir',
-        'sw_rad', 'et0', 'soil_m0_7', 'soil_t0_7']:
-        df_future[col] = last_vals[col] + np.random.normal(0, 0.1, len(df_future))
+    st.write("### 🔄 Préparation des données de prédiction")
+    future_dates = [datetime(annee, 1, 1) + timedelta(days=i) for i in range(365)]
 
-    st.write("✅ Données météo simulées avec variations aléatoires")
+    # Construction d'un DataFrame basé sur les derniers jours connus de test_df
+    df_future = test_df.copy()
+    for i in range(len(future_dates)):
+        df_future = pd.concat([df_future, pd.DataFrame([df_future.iloc[-1]])], ignore_index=True)
+        df_future.at[df_future.index[-1], 'date'] = future_dates[i].strftime("%Y-%m-%d")
 
-    st.write("### 🤖 Prédiction IA jour par jour avec feedback")
     full_input = pd.concat([train_df, test_df, df_future], ignore_index=True)
-    full_scaled = scaler_x.transform(full_input[[
-        'precip_mm', 'rain_mm', 'snow_mm', 't2m_max', 't2m_min', 't2m_mean',
-        'app_tmax', 'app_tmin', 'sun_h', 'wind10_max', 'gust10_max', 'winddir',
-        'sw_rad', 'et0', 'soil_m0_7', 'soil_t0_7']])
+    full_scaled = scaler_x.transform(full_input[features])
 
+    st.write("### 🤖 Lancement des prédictions jour par jour")
     seq_len = 60
     predictions_scaled = []
     start_idx = len(full_scaled) - len(df_future) - seq_len
     current_seq = full_scaled[start_idx:start_idx + seq_len]
 
-    for i in range(len(df_future)):
+    for i in range(len(future_dates)):
         pred = model.predict(current_seq[np.newaxis, :, :], verbose=0)[0]
         predictions_scaled.append(pred)
-        st.write(f"📅 {df_future['date'].iloc[i].strftime('%d/%m/%Y')} → 🌱 Humidité : {pred[0]:.3f}, 🌡️ Temp sol : {pred[1]:.3f}, 🧮 Score : {pred[2]:.3f}")
 
         next_input = full_scaled[start_idx + seq_len + i].copy()
-        next_input[-2:] = pred[:2]  # feedback sur humidité/temp
+        next_input[-2:] = pred[:2]
         current_seq = np.vstack([current_seq[1:], next_input])
 
     preds = scaler_y.inverse_transform(predictions_scaled)
     df_preds = pd.DataFrame(preds, columns=['soil_m0_7_pred', 'soil_t0_7_pred', 'agri_score_pred'])
-    df_preds['date'] = pd.to_datetime(df_future['date'])
+    df_preds['date'] = pd.to_datetime(future_dates)
 
     st.session_state.df_preds = df_preds
     st.session_state.pred_year = annee
-    pred_file = f"data/prediction_{annee}.csv"
-    df_preds.to_csv(pred_file, index=False)
-    st.success(f"✅ Prédiction enregistrée dans `{pred_file}`")
+
+    output_path = f"data/prediction_{annee}.csv"
+    df_preds.to_csv(output_path, index=False)
+    st.success(f"✅ Prédictions sauvegardées dans `{output_path}`")
 
 # === Affichage ===
 if st.session_state.df_preds is not None:

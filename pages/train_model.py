@@ -3,11 +3,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras import Input
+from tensorflow.keras.models import Sequential # type: ignore
+from tensorflow.keras.layers import LSTM, Dense, Dropout # type: ignore
+from tensorflow.keras.optimizers import Adam # type: ignore
+from tensorflow.keras.callbacks import EarlyStopping # type: ignore
+from tensorflow.keras import Input # type: ignore
 from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime
 
