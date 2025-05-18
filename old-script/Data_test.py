@@ -6,8 +6,8 @@ def fetch_open_meteo_2024(lat, lon):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "start_date": "2024-01-01",
-        "end_date": "2024-12-31",
+        "start_date": "2025-01-01",
+        "end_date": "2025-04-31",
         "daily": ",".join([
             "temperature_2m_max", "temperature_2m_min", "temperature_2m_mean",
             "apparent_temperature_max", "apparent_temperature_min",
@@ -78,5 +78,5 @@ if __name__ == "__main__":
     print("=== Génération des données météo + sol (2024) avec score de production agricole ===")
     df = fetch_open_meteo_2024(LAT, LON)
     df["agri_score"] = df.apply(compute_agri_score, axis=1)
-    df.to_csv("test_2024_with_score.csv", index=False)
+    df.to_csv("test_2025.csv", index=False)
     print("✅ Fichier généré : test_2024_with_score.csv avec colonne agri_score")

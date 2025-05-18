@@ -3,18 +3,18 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-from tensorflow.keras.models import Sequential # type: ignore
-from tensorflow.keras.layers import LSTM, Dense, Dropout # type: ignore
-from tensorflow.keras.optimizers import Adam # type: ignore
-from tensorflow.keras.callbacks import EarlyStopping # type: ignore
-from tensorflow.keras import Input # type: ignore
+from tensorflow.keras.models import Sequential  # type: ignore
+from tensorflow.keras.layers import LSTM, Dense, Dropout  # type: ignore
+from tensorflow.keras.optimizers import Adam  # type: ignore
+from tensorflow.keras.callbacks import EarlyStopping, Callback  # type: ignore
+from tensorflow.keras import Input  # type: ignore
 from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime
 
 st.set_page_config(page_title="Entraînement du modèle IA", layout="centered")
 st.title("⚙️ Entraînement personnalisé du modèle")
 
-# Session state pour stocker les prédictions
+# Session state
 if "df_result" not in st.session_state:
     st.session_state.df_result = None
 
@@ -22,6 +22,7 @@ st.subheader("Configuration du modèle")
 col1, col2 = st.columns(2)
 
 with col1:
+    model_name = st.text_input("Nom du modèle (sans extension)", value="mon_modele")
     epochs = st.slider("Nombre d'epochs", min_value=5, max_value=100, value=15, step=5)
     units = st.slider("Unités LSTM", min_value=32, max_value=256, value=150, step=16)
     seq_len = st.slider("Longueur de séquence", min_value=10, max_value=120, value=60, step=10)
@@ -29,6 +30,16 @@ with col1:
 with col2:
     batch_size = st.selectbox("Batch size", [16, 25, 32, 64], index=1)
     dropout_rate = st.slider("Taux de Dropout", 0.0, 0.5, 0.1, step=0.05)
+
+
+class StreamlitLogger(Callback):
+    def __init__(self, total_epochs):
+        self.total_epochs = total_epochs
+        self.epoch_log = st.empty()
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        self.epoch_log.text(f"Epoch {epoch+1}/{self.total_epochs} → loss={logs.get('loss'):.4f} - val_loss={logs.get('val_loss'):.4f}")
 
 if st.button("Lancer l'entraînement"):
     progress = st.progress(0)
@@ -82,17 +93,25 @@ if st.button("Lancer l'entraînement"):
     progress.progress(step / total_steps)
 
     st.write("### 5. Entraînement du modèle...")
+    early_stop = EarlyStopping(monitor="loss", patience=5, restore_best_weights=True)
+    logger = StreamlitLogger(epochs)
     with st.spinner("Modèle en cours d'entraînement..."):
-        early_stop = EarlyStopping(monitor="loss", patience=5, restore_best_weights=True)
-        history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.1,
-                            callbacks=[early_stop], verbose=0)
+        history = model.fit(
+            X_train, y_train,
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_split=0.1,
+            callbacks=[early_stop, logger],
+            verbose=0
+        )
     step += 1
     progress.progress(step / total_steps)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_path = f"models/lstm_model_{timestamp}.h5"
+    model_filename = f"{model_name}_{timestamp}.h5"
+    model_path = os.path.join("models", model_filename)
     model.save(model_path)
-    st.success(f"✅ Modèle entraîné et sauvegardé : `{model_path}`")
+    st.success(f"Modèle sauvegardé sous `{model_path}`")
 
     st.write("### 6. Prédiction sur les données de test...")
     X_test, y_test = [], []
@@ -112,9 +131,9 @@ if st.button("Lancer l'entraînement"):
     df_result['date'] = pd.to_datetime(dates.values)
 
     st.session_state.df_result = df_result
-    st.success("✅ Prédictions générées sur les données de test")
+    st.success("Prédictions générées sur les données de test")
 
-# === Affichage ===
+# === Affichage des résultats ===
 if st.session_state.df_result is not None:
     df_result = st.session_state.df_result
 
@@ -131,4 +150,3 @@ if st.session_state.df_result is not None:
     st.write("## 📈 Comparaison des courbes")
     st.line_chart(df_result.set_index("date")[['soil_m0_7_pred', 'soil_m0_7_real']])
     st.line_chart(df_result.set_index("date")[['soil_t0_7_pred', 'soil_t0_7_real']])
-    st.line_chart(df_result.set_index("date")[['agri_score_pred', 'agri_score_real']])
