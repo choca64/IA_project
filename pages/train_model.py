@@ -1,4 +1,3 @@
-# train_model.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -12,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime
 
 st.set_page_config(page_title="Entraînement du modèle IA", layout="centered")
-st.title("⚙️ Entraînement personnalisé du modèle")
+st.title(" Entraînement personnalisé du modèle")
 
 # Session state
 if "df_result" not in st.session_state:
@@ -137,7 +136,7 @@ if st.button("Lancer l'entraînement"):
 if st.session_state.df_result is not None:
     df_result = st.session_state.df_result
 
-    st.write("## 🗓️ Explorer les résultats par date")
+    st.write("##  Explorer les résultats par date")
     selected_date = st.date_input("Sélectionner une date", df_result['date'].min())
     row = df_result[df_result['date'] == pd.to_datetime(selected_date)]
     if not row.empty:
@@ -147,6 +146,6 @@ if st.session_state.df_result is not None:
         st.markdown(f"- **Temp. sol - Prédit** : {r['soil_t0_7_pred']:.3f} / **Réel** : {r['soil_t0_7_real']:.3f}")
         st.markdown(f"- **Score - Prédit** : {r['agri_score_pred']:.3f} / **Réel** : {r['agri_score_real']:.3f}")
 
-    st.write("## 📈 Comparaison des courbes")
+    st.write("##  Comparaison des courbes")
     st.line_chart(df_result.set_index("date")[['soil_m0_7_pred', 'soil_m0_7_real']])
     st.line_chart(df_result.set_index("date")[['soil_t0_7_pred', 'soil_t0_7_real']])

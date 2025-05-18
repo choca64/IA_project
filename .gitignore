@@ -1,4 +1,4 @@
 .history/
 .venv/
-Graphe/
-old-script/
+Graphe/*
+old-script/*

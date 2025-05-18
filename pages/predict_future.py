@@ -1,4 +1,3 @@
-# predict_future.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,7 +7,7 @@ from tensorflow.keras.models import load_model  # type: ignore
 from sklearn.preprocessing import MinMaxScaler
 
 st.set_page_config(page_title="Prédiction future", layout="centered")
-st.title("🔮 Prédire l'humidité et la température du sol pour une année future")
+st.title(" Prédire l'humidité et la température du sol pour 2025")
 
 if "df_preds" not in st.session_state:
     st.session_state.df_preds = None
@@ -25,15 +24,15 @@ with col2:
     selected_model = st.selectbox("Modèle à utiliser", model_files)
 
 if st.button("Lancer la prédiction"):
-    st.write(f"### 🔧 Modèle utilisé : `{selected_model}`")
-    st.write(f"### 🕒 Année à prédire : `{annee}`")
+    st.write(f"###  Modèle utilisé : `{selected_model}`")
+    st.write(f"###  Année à prédire : `{annee}`")
 
     with st.spinner("Chargement du modèle et des données..."):
         try:
             model = load_model(f"models/{selected_model}", compile=False)
-            with st.expander("🧠 Résumé du modèle"):
+            with st.expander(" Résumé du modèle"):
                 model.summary(print_fn=st.text)
-            st.write("✅ Modèle chargé avec succès")
+            st.write(" Modèle chargé avec succès")
         except Exception as e:
             st.error(f"Erreur lors du chargement du modèle : {e}")
             st.stop()
@@ -42,7 +41,7 @@ if st.button("Lancer la prédiction"):
             train_df = pd.read_csv("data/train_with_score.csv")
             test_file = f"data/test_{annee - 1}_with_score.csv"
             test_df = pd.read_csv(test_file)
-            st.write(f"✅ Données chargées : train={len(train_df)}, test={len(test_df)}")
+            st.write(f" Données chargées : train={len(train_df)}, test={len(test_df)}")
         except Exception as e:
             st.error(f"Erreur lors du chargement des données : {e}")
             st.stop()
@@ -61,9 +60,9 @@ if st.button("Lancer la prédiction"):
 
         scaler_x = MinMaxScaler().fit(train_df[features])
         scaler_y = MinMaxScaler().fit(train_df[targets])
-        st.write("✅ Normalisation effectuée")
+        st.write(" Normalisation effectuée")
 
-    st.write("### 🔄 Préparation des données de prédiction")
+    st.write("### Préparation des données de prédiction")
     future_dates = [datetime(annee, 1, 1) + timedelta(days=i) for i in range(365)]
 
     df_future = test_df.copy()
@@ -73,9 +72,9 @@ if st.button("Lancer la prédiction"):
 
     full_input = pd.concat([train_df, test_df, df_future], ignore_index=True)
     full_scaled = scaler_x.transform(full_input[features])
-    st.write(f"✅ Forme des données d'entrée : {full_scaled.shape}")
+    st.write(f" Forme des données d'entrée : {full_scaled.shape}")
 
-    st.write("### 🤖 Prédiction en cours...")
+    st.write("###  Prédiction en cours...")
     seq_len = 60
     predictions_scaled = []
     start_idx = len(full_scaled) - len(df_future) - seq_len
@@ -110,7 +109,7 @@ if st.button("Lancer la prédiction"):
 
     output_path = f"data/prediction_{annee}.csv"
     df_preds.to_csv(output_path, index=False)
-    st.success(f"✅ Prédictions sauvegardées dans `{output_path}`")
+    st.success(f" Prédictions sauvegardées dans `{output_path}`")
 
 # === Affichage ===
 if st.session_state.df_preds is not None:
