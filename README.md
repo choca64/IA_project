@@ -16,19 +16,19 @@ Cette application permet de prédire l'humidité et la température du sol à l'
 
 ##  Lancer l'application
 
-Installe les dépendances nécessaires :
+Installez les dépendances nécessaires :
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Lance l'application Streamlit :
+Lancez l'application Streamlit :
 
 ```bash
 streamlit run main.py
 ```
 
-Navigue ensuite à travers l'application à l'aide du menu latéral.
+Naviguez ensuite à travers l'application à l'aide du menu latéral.
 
 ##  Fonctionnalités
 
