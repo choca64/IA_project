@@ -1,22 +1,30 @@
+## @file train_model_app.py
+#  @brief Application Streamlit pour entraîner un modèle LSTM sur des données météorologiques et agricoles.
+#
+#  Cette application permet de configurer, entraîner et évaluer un modèle LSTM personnalisable,
+#  avec visualisation des prédictions sur un jeu de test.
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-from tensorflow.keras.models import Sequential  # type: ignore
-from tensorflow.keras.layers import LSTM, Dense, Dropout  # type: ignore
-from tensorflow.keras.optimizers import Adam  # type: ignore
-from tensorflow.keras.callbacks import EarlyStopping, Callback  # type: ignore
-from tensorflow.keras import Input  # type: ignore
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, Callback
+from tensorflow.keras import Input
 from sklearn.preprocessing import MinMaxScaler
 from datetime import datetime
 
+## Configuration de la page Streamlit
 st.set_page_config(page_title="Entraînement du modèle IA", layout="centered")
 st.title(" Entraînement personnalisé du modèle")
 
-# Session state
+## Initialise l'état de session pour stocker les résultats
 if "df_result" not in st.session_state:
     st.session_state.df_result = None
 
+## Interface utilisateur pour configurer l'entraînement
 st.subheader("Configuration du modèle")
 col1, col2 = st.columns(2)
 
@@ -30,16 +38,21 @@ with col2:
     batch_size = st.selectbox("Batch size", [16, 25, 32, 64], index=1)
     dropout_rate = st.slider("Taux de Dropout", 0.0, 0.5, 0.1, step=0.05)
 
-
+## @class StreamlitLogger
+# Callback personnalisé pour afficher la progression de l'entraînement en temps réel dans Streamlit.
 class StreamlitLogger(Callback):
+    ## Constructeur
+    #  @param total_epochs Nombre total d'époques prévues
     def __init__(self, total_epochs):
         self.total_epochs = total_epochs
         self.epoch_log = st.empty()
 
+    ## Affiche le log à la fin de chaque époque
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
         self.epoch_log.text(f"Epoch {epoch+1}/{self.total_epochs} → loss={logs.get('loss'):.4f} - val_loss={logs.get('val_loss'):.4f}")
 
+## Lance le pipeline d'entraînement du modèle lorsqu'on clique sur le bouton
 if st.button("Lancer l'entraînement"):
     progress = st.progress(0)
     step = 0
@@ -106,6 +119,7 @@ if st.button("Lancer l'entraînement"):
     step += 1
     progress.progress(step / total_steps)
 
+    ## Sauvegarde du modèle entraîné avec horodatage
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_filename = f"{model_name}_{timestamp}.h5"
     model_path = os.path.join("models", model_filename)
@@ -122,6 +136,7 @@ if st.button("Lancer l'entraînement"):
     y_pred_scaled = model.predict(X_test)
     y_pred = scaler_y.inverse_transform(y_pred_scaled)
 
+    ## Construction du DataFrame de résultats avec les prédictions et les valeurs réelles
     dates = test_data.iloc[seq_len:].reset_index(drop=True)['date']
     df_result = pd.DataFrame(y_pred, columns=["soil_m0_7_pred", "soil_t0_7_pred", "agri_score_pred"])
     df_result['soil_m0_7_real'] = y_test[:, 0]
@@ -136,6 +151,7 @@ if st.button("Lancer l'entraînement"):
 if st.session_state.df_result is not None:
     df_result = st.session_state.df_result
 
+    ## Sélection et affichage des résultats par date
     st.write("##  Explorer les résultats par date")
     selected_date = st.date_input("Sélectionner une date", df_result['date'].min())
     row = df_result[df_result['date'] == pd.to_datetime(selected_date)]
@@ -146,6 +162,7 @@ if st.session_state.df_result is not None:
         st.markdown(f"- **Temp. sol - Prédit** : {r['soil_t0_7_pred']:.3f} / **Réel** : {r['soil_t0_7_real']:.3f}")
         st.markdown(f"- **Score - Prédit** : {r['agri_score_pred']:.3f} / **Réel** : {r['agri_score_real']:.3f}")
 
+    ## Graphiques comparatifs des prédictions vs valeurs réelles
     st.write("##  Comparaison des courbes")
     st.line_chart(df_result.set_index("date")[['soil_m0_7_pred', 'soil_m0_7_real']])
     st.line_chart(df_result.set_index("date")[['soil_t0_7_pred', 'soil_t0_7_real']])

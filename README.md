@@ -16,10 +16,22 @@ Cette application permet de prédire l'humidité et la température du sol à l'
 
 ##  Lancer l'application
 
+Créer un environement virutel :
+
+```bash
+python -m venv <nom_environement>
+```
+
+Activer l'environement virutel :
+
+```bash
+<nom_environement>\Scripts\activate
+```
+
 Installez les dépendances nécessaires :
 
 ```bash
-pip install -r requirements.txt
+pip install -r <chemin/requirements.txt>
 ```
 
 Lancez l'application Streamlit :
